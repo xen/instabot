@@ -1,28 +1,24 @@
-import os
 import datetime
+from pathlib import Path
+
+from collections import OrderedDict
 
 
 def get_tsv_line(dictionary):
-    line = ""
-    for key in sorted(dictionary):
-        line += str(dictionary[key]) + "\t"
-    return line[:-2] + "\n"
+    return "\t".join([str(v) for v in dictionary.values()]) + "\n"
 
 
 def get_header_line(dictionary):
-    line = "\t".join(sorted(dictionary))
-    return line + "\n"
+    return "\t".join(dictionary.keys()) + "\n"
 
 
 def ensure_dir(file_path):
-    directory = os.path.dirname(file_path)
-    if not os.path.exists(directory) and len(directory) > 0:
-        os.makedirs(directory)
+    Path.mkdir(Path.absolute(Path(file_path).parent), exist_ok=True)
 
 
 def dump_data(data, path):
     ensure_dir(path)
-    if not os.path.exists(path):
+    if not Path.exists(path):
         with open(path, "w") as f:
             f.write(get_header_line(data))
             f.write(get_tsv_line(data))
@@ -37,13 +33,13 @@ def save_user_stats(self, username, path=""):
     user_id = self.convert_to_user_id(username)
     infodict = self.get_user_info(user_id)
     if infodict:
-        data_to_save = {
-            "date": str(datetime.datetime.now().replace(microsecond=0)),
-            "followers": int(infodict["follower_count"]),
-            "following": int(infodict["following_count"]),
-            "medias": int(infodict["media_count"])
-        }
-        file_path = os.path.join(path, "%s.tsv" % username)
+        data_to_save = OrderedDict(
+            date=str(datetime.datetime.now().replace(microsecond=0)),
+            followers=int(infodict["follower_count"]),
+            following=int(infodict["following_count"]),
+            medias=int(infodict["media_count"])
+        )
+        file_path = Path(path, "%s.tsv" % username)
         dump_data(data_to_save, file_path)
         self.logger.info("Stats saved at %s." % data_to_save["date"])
     return False

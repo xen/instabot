@@ -1,4 +1,3 @@
-import requests
 import json
 import hashlib
 import hmac
@@ -7,39 +6,26 @@ import uuid
 import sys
 import logging
 import time
+
 from random import randint
+import requests
 from tqdm import tqdm
 
 from . import config
-from .api_photo import configurePhoto
-from .api_photo import uploadPhoto
-from .api_photo import downloadPhoto
+from .api_photo import PhotoMixin
+from .api_video import VideoMixin
+from .api_search import SearchMixin
 
-from .api_video import configureVideo
-from .api_video import uploadVideo
+from .api_profile import ProfileMixin
 
-from .api_search import fbUserSearch
-from .api_search import searchUsers
-from .api_search import searchUsername
-from .api_search import searchTags
-from .api_search import searchLocation
-
-from .api_profile import removeProfilePicture
-from .api_profile import setPrivateAccount
-from .api_profile import setPublicAccount
-from .api_profile import getProfileData
-from .api_profile import editProfile
-from .api_profile import setNameAndPhone
-
-from .prepare import get_credentials
-from .prepare import delete_credentials
+from .prepare import get_credentials, delete_credentials
 
 # The urllib library was split into other modules from Python 2 to Python 3
 if sys.version_info.major == 3:
     import urllib.parse
 
 
-class API(object):
+class API(PhotoMixin, VideoMixin, SearchMixin, ProfileMixin):
     def __init__(self):
         self.isLoggedIn = False
         self.LastResponse = None
@@ -48,10 +34,11 @@ class API(object):
         # handle logging
         self.logger = logging.getLogger('[instabot]')
         self.logger.setLevel(logging.DEBUG)
-        logging.basicConfig(format='%(asctime)s %(message)s',
-                            filename='instabot.log',
-                            level=logging.INFO
-                            )
+        logging.basicConfig(
+            format='%(asctime)s %(message)s',
+            filename='instabot.log',
+            level=logging.INFO
+        )
         ch = logging.StreamHandler()
         ch.setLevel(logging.DEBUG)
         formatter = logging.Formatter(
@@ -187,21 +174,6 @@ class API(object):
         })
         return self.SendRequest('qe/expose/', self.generateSignature(data))
 
-    def uploadPhoto(self, photo, caption=None, upload_id=None):
-        return uploadPhoto(self, photo, caption, upload_id)
-
-    def downloadPhoto(self, media_id, filename, media=False, path='photos/'):
-        return downloadPhoto(self, media_id, filename, media, path)
-
-    def configurePhoto(self, upload_id, photo, caption=''):
-        return configurePhoto(self, upload_id, photo, caption)
-
-    def uploadVideo(self, photo, caption=None, upload_id=None):
-        return uploadVideo(self, photo, caption, upload_id)
-
-    def configureVideo(self, upload_id, video, thumbnail, caption=''):
-        return configureVideo(self, upload_id, video, thumbnail, caption)
-
     def editMedia(self, mediaId, captionText=''):
         data = json.dumps({
             '_uuid': self.uuid,
@@ -280,21 +252,6 @@ class API(object):
         return self.SendRequest('media/' + str(mediaId) + '/comment/' + str(commentId) + '/delete/',
                                 self.generateSignature(data))
 
-    def removeProfilePicture(self):
-        return removeProfilePicture(self)
-
-    def setPrivateAccount(self):
-        return setPrivateAccount(self)
-
-    def setPublicAccount(self):
-        return setPublicAccount(self)
-
-    def getProfileData(self):
-        return getProfileData(self)
-
-    def editProfile(self, url, phone, first_name, biography, email, gender):
-        return editProfile(self, url, phone, first_name, biography, email, gender)
-
     def getUsernameInfo(self, usernameId):
         return self.SendRequest('users/' + str(usernameId) + '/info/')
 
@@ -336,21 +293,6 @@ class API(object):
 
     def getSelfGeoMedia(self):
         return self.getGeoMedia(self.user_id)
-
-    def fbUserSearch(self, query):
-        return fbUserSearch(self, query)
-
-    def searchUsers(self, query):
-        return searchUsers(self, query)
-
-    def searchUsername(self, username):
-        return searchUsername(self, username)
-
-    def searchTags(self, query):
-        return searchTags(self, query)
-
-    def searchLocation(self, query='', lat=None, lng=None):
-        return searchLocation(self, query, lat, lng)
 
     def syncFromAdressBook(self, contacts):
         return self.SendRequest('address_book/link/?include=extra_display_name,thumbnails',
@@ -541,8 +483,8 @@ class API(object):
         generated_uuid = str(uuid.uuid4())
         if (uuid_type):
             return generated_uuid
-        else:
-            return generated_uuid.replace('-', '')
+
+        return generated_uuid.replace('-', '')
 
     def getLikedMedia(self, maxid=''):
         return self.SendRequest('feed/liked/?max_id=' + str(maxid))
